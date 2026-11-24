@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+
+<html lang="vi">
+<head>
+<meta charset="utf-8"/>
+<meta content="hovsu2009,chatGPT,miniAI" name="author"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>Quiz Craft</title>
+<link href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%231d7a67'/%3E%3Ctext x='32' y='44' font-size='36' font-family='Georgia,serif' font-weight='700' fill='white' text-anchor='middle'%3EQ%3C/text%3E%3C/svg%3E" rel="icon"/>
+<!-- CSS moved to css/styles.css (style block 1) -->
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@5/dist/email.min.js"></script>
+<script src="./js/supabase-bridge.js"></script>
+<script src="config.js"></script>
+<script async="" defer="" src="https://accounts.google.com/gsi/client"></script>
+<!-- CSS moved to css/styles.css (style block 2) -->
+<!-- CSS moved to css/styles.css (style block 3) -->
+
+<!-- CSS moved to css/styles.css (style block 4) -->
+
+<link rel="stylesheet" href="./css/styles.css">
+</head>
+<body data-theme="dark">
+<div class="app-shell">
+<header class="topbar">
+<a class="brand" href="#">
+<span class="brand-mark">Q</span>
+<span><strong>Quiz Craft</strong><small>Tạo câu hỏi dễ dàng</small></span>
+</a>
+<div class="topbar-actions">
+<span class="save-status" id="saveStatus">Đã lưu</span>
+<select aria-label="Dự án" class="header-button" id="projectSelect"></select>
+<button class="header-button project-delete-button" id="deleteProjectBtn" title="Xóa dự án hiện tại" type="button">Xóa dự án</button>
+<button class="header-button" id="newProjectBtn" type="button">＋ Dự án mới</button>
+<button class="header-button" id="settingsBtn" type="button">Cài đặt</button>
+<button class="header-button" id="exportBtn" type="button">Xuất bài tập</button>
+<button class="header-button" id="authBtn" type="button">Đăng nhập</button>
+</div>
+</header>
+<main class="main-content">
+<div class="hero-row">
+<div>
+<p class="eyebrow">Bộ soạn câu hỏi</p>
+<h1 contenteditable="true" data-editable="title" id="quizTitle" spellcheck="false" style="font-family: 'Be Vietnam Pro', system-ui, -apple-system, Arial, sans-serif !important;"><i>Biến kiến thức thành một bài quiz thú vị.</i></h1>
+<p class="hero-copy" contenteditable="true" data-editable="description" id="quizDescription" spellcheck="false">Tạo câu hỏi, chèn ảnh, đặt thời gian và thử sức ngay trên cùng một trang.</p>
+</div>
+<div class="stat-card"><span id="questionCount">0</span><small>câu hỏi</small></div>
+</div>
+<div class="tabs" role="tablist">
+<button class="tab is-active" data-view="editor" type="button">Mục câu hỏi</button>
+<button class="tab" data-view="quiz" type="button">Làm thử</button>
+</div>
+<!-- ============ Editor view ============ -->
+<section id="editorView">
+<div class="workspace-grid">
+<!-- Left: question editor + analytics -->
+<div class="workspace-left-column">
+<div class="panel editor-panel">
+<div class="panel-heading">
+<h2 id="formTitle">Thêm câu hỏi</h2>
+<button aria-label="Làm mới biểu mẫu" class="icon-button" id="resetFormBtn" title="Làm mới biểu mẫu" type="button">＋</button>
+</div>
+<div aria-label="Phương thức tạo câu hỏi" class="creation-mode-switch" role="group">
+<button aria-pressed="true" class="button button-primary" id="manualModeBtn" type="button">Viết thủ công</button>
+<button aria-pressed="false" class="button button-ghost" id="autoModeBtn" type="button">Nhập đề tự động (JSON)</button>
+</div>
+<section class="auto-json-panel" hidden="" id="autoJsonPanel">
+<div class="auto-json-intro"><strong>Nhập đề bằng AI</strong><p>Mở ChatGPT hoặc Gemini, gửi câu lệnh hướng dẫn cùng tài liệu PDF/Word, sau đó dán JSON kết quả vào đây. Bạn cũng có thể tải JSON đã xuất từ Quiz Craft để chuyển toàn bộ câu hỏi và media sang dự án khác.</p></div>
+<div class="ai-link-row">
+<a class="button button-ghost" href="https://chatgpt.com/" rel="noopener noreferrer" target="_blank">Mở ChatGPT ↗</a>
+<a class="button button-ghost" href="https://gemini.google.com/" rel="noopener noreferrer" target="_blank">Mở Gemini ↗</a>
+</div>
+<div class="json-guide-card">
+<div class="json-guide-heading"><strong>Video hướng dẫn</strong><span class="type-pill">Chỉ hiện ở chế độ tự động</span></div>
+<!-- Thay URL bên dưới bằng link nhúng (embed) của video hướng dẫn -->
+<div class="json-video-frame">
+<iframe allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen="" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" src="https://www.youtube.com/embed/EROLwjv3mZE?rel=0" title="Video hướng dẫn nhập đề bằng AI và JSON"></iframe>
+</div>
+</div>
+<div class="json-prompt-card"><div class="json-prompt-heading"><strong>Câu lệnh dành cho ChatGPT / Gemini</strong><button aria-label="Sao chép toàn bộ câu lệnh AI" class="button button-primary" id="copyJsonPromptBtn" type="button">Sao chép</button></div><p class="json-prompt-copy-hint">Dán tài liệu vào ChatGPT hoặc Gemini cùng câu lệnh này. AI sẽ trả về một khối JSON có nút Sao chép. Công thức phải viết bằng chữ/ký hiệu thông thường; câu cần hình chỉ được ghi chú để bạn tự chèn ảnh sau khi nhập.</p><script id="jsonPromptText" type="text/plain">Bạn là chuyên gia chuyển đổi đề thi sang dữ liệu JSON cho Quiz Craft. Hãy đọc tài liệu đề thi mà người dùng tải lên và chuyển các câu hỏi thành dữ liệu đúng cấu trúc bên dưới. ƯU TIÊN QUAN TRỌNG NHẤT: mỗi mã đề phải có đáp án đúng theo chính thứ tự phương án của mã đề đó; tuyệt đối không để đáp án hoặc lời giải của mã đề này lọt sang mã đề khác.
+
+QUY TRÌNH LÀM VIỆC:
+1. Đọc toàn bộ tài liệu được gửi: tất cả trang, tất cả mã đề, phần hướng dẫn, hình/bảng/sơ đồ và bảng đáp án. Không chỉ đọc trang đầu. Với đề nhiều cột, đọc từ trên xuống dưới rồi từ trái sang phải.
+2. Lập danh sách riêng cho từng mã đề. Ghi lại chính xác câu hỏi, các phương án và thứ tự phương án đang xuất hiện trong từng mã đề.
+3. Giải hoặc kiểm tra từng câu. Sau đó đối chiếu đáp án với bảng đáp án chính thức nếu có.
+4. Tạo JSON riêng biệt cho từng mã đề trong mảng projects.
+5. Trước khi xuất, thực hiện vòng kiểm tra cuối theo mục G. Không xuất kết quả khi chưa rà soát ánh xạ đáp án của từng mã đề.
+
+A. TÁCH MÃ ĐỀ THÀNH DỰ ÁN RIÊNG:
+- Nhận diện mã đề từ tiêu đề, đầu/cuối trang, bìa hoặc phần thông tin đề, ví dụ “Mã đề 101”, “Đề A”, “Form B”. Không nhầm mã đề với số câu, số trang, số báo danh, mã lớp hoặc năm học.
+- Mỗi mã đề khác nhau là một project riêng. Không gộp câu giữa các mã đề, kể cả khi chúng có cùng nội dung nhưng đảo thứ tự câu hoặc phương án.
+- Cùng một mã đề xuất hiện ở nhiều trang thì gom vào đúng project đó và giữ thứ tự câu.
+- Từng project phải có name, examCode, meta và questions.
+- Chỉ có một mã đề thì vẫn tạo một phần tử trong projects. Không có mã đề thì tạo một project, examCode là chuỗi rỗng; không tự bịa mã đề.
+- Không xác định được mã đề của một câu trong tài liệu nhiều mã đề thì đặt câu đó trong project riêng “Chưa xác định mã đề”, examCode là chuỗi rỗng.
+
+B. PHÂN LOẠI CÂU HỎI — CHỈ DÙNG 4 LOẠI:
+- multiple: trắc nghiệm chọn một đáp án, có 2–4 options.
+- truefalse: câu đúng/sai gồm 2–4 statements.
+- short: câu trả lời ngắn.
+- essay: câu tự luận.
+Không tự tạo loại khác.
+
+C. QUY TẮC XÁC ĐỊNH ĐÁP ÁN — ĐỌC KỸ, KHÔNG ĐƯỢC LÀM SAI:
+1. Với MỖI project/mã đề, hãy giải và xác định đáp án dựa trên CHÍNH câu hỏi và CHÍNH các phương án đang nằm trong project đó. Không sao chép nguyên chỉ số đáp án từ mã đề khác.
+2. Trường answer của multiple là VỊ TRÍ của phương án đúng trong mảng options hiện tại, đếm từ 0:
+   - phương án đầu tiên trong options → answer: 0
+   - phương án thứ hai → answer: 1
+   - phương án thứ ba → answer: 2
+   - phương án thứ tư → answer: 3
+   Đây là vị trí thực tế của đáp án trong mảng options vừa xuất, KHÔNG phải chữ cái cố định của đề gốc.
+3. Không được chuyển máy móc chữ A/B/C/D trong bảng đáp án thành 0/1/2/3. Chữ cái ở bảng đáp án chỉ có ý nghĩa theo đúng mã đề và thứ tự phương án của mã đề đó. Nếu các mã đề đảo phương án, phải tìm phương án có NỘI DUNG đúng ở từng mã đề rồi mới ghi chỉ số answer.
+4. Nếu tài liệu có bảng đáp án theo mã đề: trước hết xác định đúng cột/dòng của đúng mã đề; sau đó đối chiếu chữ cái với thứ tự lựa chọn trong chính mã đề đó. Tiếp tục tự giải câu để kiểm tra. Không dùng đáp án của mã 1211 cho 1212, 1213 hoặc 1214.
+5. Nếu các mã đề có cùng một câu nhưng thứ tự options khác nhau: nội dung phương án đúng có thể giống nhau, nhưng answer có thể khác nhau. Hãy tính answer độc lập cho từng project. Ví dụ: cùng đáp án nội dung “30°”, nếu nó ở vị trí thứ tư trong options của mã đề A thì answer phải là 3; nếu ở vị trí thứ hai trong mã đề B thì answer phải là 1.
+6. Với mọi câu multiple, phải kiểm tra điều kiện sau trước khi xuất: options[answer] chính là phương án có nội dung trả lời đúng theo phép giải. Đọc lại chữ/phương án tại vị trí được chọn, không chỉ kiểm tra answer nằm trong khoảng 0–3.
+7. Mảng explanations phải đi cùng đúng thứ tự options. explanations[0] giải thích options[0], explanations[1] giải thích options[1], v.v. Không giữ nguyên mảng giải thích của mã đề khác sau khi đảo thứ tự phương án. Phương án đúng phải được giải thích là đúng; từng phương án sai phải được giải thích là sai hoặc vì sao không phù hợp.
+8. Với truefalse, kiểm tra từng statement theo đúng nội dung của statement trong mã đề hiện tại; correct phải là boolean true hoặc false. Không sao chép thứ tự đáp án đúng/sai từ mã đề khác nếu các phát biểu bị đảo thứ tự.
+9. Với short, tự tính và ghi answer chính xác, ngắn gọn. Với essay, ghi đáp án mẫu hoặc các ý chính khi tài liệu cho phép.
+10. Nếu đáp án in trong bảng đáp án mâu thuẫn với phép giải, hãy ưu tiên kiểm tra lại mã đề, thứ tự phương án và nội dung câu hỏi. Không tự đổi đáp án theo bảng nếu phương án trong mã đề không khớp. Chốt đáp án theo phép giải đúng của câu hỏi trong mã đề đang xử lý.
+11. Không tạo trường needsReview, needs_review, reviewRequired hoặc cờ “cần kiểm tra đáp án”. Không tạo answer null. Mọi câu trắc nghiệm/đúng-sai/trả lời ngắn được xuất phải có đáp án hợp lệ. Nếu đề thiếu hình hoặc thiếu dữ kiện đến mức không thể xác định đáp án và không có bảng đáp án đáng tin cậy cho đúng mã đề, không được bịa đáp án; bỏ câu không thể xác định đó khỏi JSON thay vì tạo đáp án giả.
+
+D. GIẢI THÍCH:
+- Mỗi câu phải có explanation bằng tiếng Việt, giải thích rõ căn cứ chọn đáp án.
+- Bài toán tính toán phải nêu công thức, phép tính chính và kết quả.
+- Câu lý thuyết phải nêu quy tắc/khái niệm dùng để kết luận.
+- Với multiple, explanations là mảng có đúng số phần tử bằng options, theo đúng thứ tự options. Không để explanations lệch thứ tự sau khi đảo phương án.
+- Với truefalse, explanation nêu căn cứ cho từng phát biểu theo đúng thứ tự statements; có thể viết “Ý a: ...; Ý b: ...”.
+- Lời giải phải dựa vào nội dung đề hiện tại. Không viết câu kiểu “bảng đáp án mã đề khác ghi...” nếu chưa chứng minh được đó là bảng của mã đề hiện tại.
+
+E. CẤU TRÚC JSON QUIZ CRAFT — TUÂN THỦ CHÍNH XÁC:
+JSON gốc luôn là một object có projects:
+{
+  "format": "quiz-craft-multi-project",
+  "version": 1,
+  "projects": [
+    {
+      "name": "Kiểm tra Toán - Mã đề 101",
+      "examCode": "101",
+      "meta": {"title": "Kiểm tra Toán - Mã đề 101", "description": ""},
+      "questions": []
+    }
+  ]
+}
+
+1. Trắc nghiệm:
+{
+  "prompt": "Nội dung câu hỏi",
+  "type": "multiple",
+  "level": "",
+  "options": ["Phương án A", "Phương án B", "Phương án C", "Phương án D"],
+  "answer": 1,
+  "explanations": ["Giải thích phương án A", "Giải thích phương án B", "Giải thích phương án C", "Giải thích phương án D"],
+  "explanation": "Lời giải chung"
+}
+
+2. Đúng/sai:
+{
+  "prompt": "Nội dung dẫn của câu hỏi",
+  "type": "truefalse",
+  "level": "",
+  "statements": [
+    {"text": "Phát biểu a", "correct": true},
+    {"text": "Phát biểu b", "correct": false}
+  ],
+  "explanation": "Giải thích từng phát biểu theo đúng thứ tự"
+}
+
+3. Trả lời ngắn:
+{
+  "prompt": "Nội dung câu hỏi",
+  "type": "short",
+  "level": "",
+  "answer": "Đáp án ngắn gọn",
+  "explanation": "Cách suy ra đáp án"
+}
+
+4. Tự luận:
+{
+  "prompt": "Nội dung câu hỏi",
+  "type": "essay",
+  "level": "",
+  "answer": "Đáp án mẫu hoặc các ý chính",
+  "explanation": "Hướng giải hoặc những ý cần đạt"
+}
+
+Không thêm trường needsReview hay trường trạng thái kiểm tra đáp án. Không dùng answer:null. Không thêm thuộc tính ngoài schema trừ imageSuggestion và media khi tài liệu thực sự có dữ liệu media hợp lệ.
+
+F. CÁCH VIẾT NỘI DUNG:
+- Viết câu hỏi, phương án, đáp án và giải thích bằng chữ/ký hiệu toán học thông thường, dễ đọc trực tiếp. KHÔNG dùng LaTeX, MathJax hay cú pháp toán có dấu $.
+- Không viết dạng như $\vec{a}$, $\frac{1}{2}$, $\sqrt{2}$, $\angle$, $\circ$, \( ... \), \[ ... \]. Không dùng dấu gạch chéo ngược để mã hóa công thức.
+- Ví dụ: “vectơ a = (2; 1; 1)”, “120°”, “1/2”, “√2”, “x²”, “H₂O”, “3 cm²”. Với công thức dài, diễn đạt bằng câu chữ và ký hiệu Unicode phổ thông.
+- Giữ nguyên tiếng Việt, số liệu, đơn vị, dấu âm, phân số, số mũ, căn thức, ký hiệu hóa học và dữ kiện trong bảng.
+- Giữ số thứ tự câu gốc trong prompt nếu tài liệu có đánh số.
+
+G. HÌNH ẢNH VÀ RÀ SOÁT CUỐI:
+- Tuyệt đối không tự vẽ, tạo, sinh, tìm trên mạng, tải, nhúng hoặc đính kèm hình ảnh. Người dùng sẽ tự chèn ảnh thủ công sau khi nhập.
+- Nếu câu hỏi có hình/sơ đồ/bản đồ/biểu đồ, điền imageSuggestion bằng mô tả ngắn, cụ thể để người dùng biết cần chèn hình nào. Không tạo ảnh giả, SVG, base64, HTML hay URL ảnh.
+- Nếu hình có trong tài liệu đã tải lên, hãy đọc hình đó để giải câu hỏi; imageSuggestion chỉ là lời nhắc người dùng chèn lại hình vào Quiz Craft, không phải lý do để bỏ qua hình trong tài liệu nguồn.
+- Trước khi xuất, rà soát RIÊNG TỪNG project:
+  a. Số project đúng với số mã đề thực tế; câu hỏi không bị trộn.
+  b. Số câu theo từng mã đề được đối chiếu với tài liệu.
+  c. Với từng câu multiple: tự giải câu, xác định nội dung đáp án đúng, tìm đúng vị trí của nội dung đó trong options hiện tại, ghi answer bằng vị trí từ 0; sau đó kiểm tra lại options[answer] và explanations cùng thứ tự.
+  d. Với từng câu truefalse: correct tương ứng đúng/sai của chính từng phát biểu theo đúng thứ tự hiện tại.
+  e. Đọc explanation để chắc chắn nó chứng minh đúng answer/correct vừa ghi, không mâu thuẫn với đáp án.
+  f. Không sao chép answer hoặc explanations từ mã đề khác chỉ vì nội dung câu giống nhau.
+  g. Tất cả trường bắt buộc đúng kiểu dữ liệu; không có answer null, needsReview, comment, dấu phẩy thừa, NaN hoặc undefined.
+- Chỉ sau khi hoàn tất các bước trên mới trả kết quả.
+
+H. ĐỊNH DẠNG TRẢ KẾT QUẢ ĐỂ DỄ SAO CHÉP:
+- Trả về DUY NHẤT MỘT khối mã Markdown có nhãn json, bắt đầu bằng ```json và kết thúc bằng ```.
+- Bên trong khối mã chỉ có một object JSON hoàn chỉnh theo cấu trúc mục E. Không viết code HTML/JavaScript/Python vì đây là dữ liệu JSON, không phải chương trình.
+- Không viết lời chào, lời dẫn, nhận xét hoặc văn bản bên ngoài khối mã. Không chia thành nhiều khối mã, không dùng dấu ... để rút gọn.
+- Không bỏ bớt câu. Nếu tài liệu quá dài đến mức không thể xuất trọn JSON, hãy thông báo cần chia tài liệu thành các phần nhỏ, không xuất JSON bị cắt dở.
+- Người dùng sẽ sao chép nguyên khối mã và dán vào Quiz Craft.
+
+Nếu chưa có tài liệu hoặc không thể đọc được tài liệu, hãy yêu cầu người dùng tải tài liệu lên, không tự tạo câu hỏi giả. Nếu nền tảng hỗ trợ tạo tệp, có thể tạo tệp .json hoàn chỉnh để tải xuống.</script></div>
+<label for="jsonImportText">Dán nội dung JSON</label>
+<textarea class="json-import-text" id="jsonImportText" placeholder="Dán JSON AI trả về tại đây..."></textarea>
+<label class="file-button json-file-label">Hoặc tải tệp JSON từ thiết bị<input accept=".json,application/json" id="jsonImportFile" type="file"/></label>
+<div class="json-import-actions"><label for="jsonImportMode">Cách nhập</label><select id="jsonImportMode"><option value="append">Thêm vào cuối danh sách hiện tại</option><option value="replace">Thay thế toàn bộ câu hỏi hiện tại</option></select><button class="button button-ghost" id="previewJsonBtn" type="button">Kiểm tra và xem trước</button></div>
+<div aria-live="polite" class="json-import-status" hidden="" id="jsonImportStatus"></div>
+<div class="json-import-preview" hidden="" id="jsonImportPreview"></div>
+<button class="button button-primary button-wide" disabled="" id="applyJsonImportBtn" type="button">Thêm câu hỏi vào bộ đề</button>
+</section>
+<div id="manualQuestionEditor">
+<div class="question-navigator">
+<button class="button button-ghost" id="prevQuestionBtn" type="button">← Trước</button>
+<select aria-label="Chọn câu hỏi" id="questionJump"></select>
+<span class="count-pill" id="editorPosition">0 / 0</span>
+<button class="button button-ghost" id="nextQuestionBtn" type="button">Sau →</button>
+</div>
+<form id="questionForm" novalidate="">
+<label for="questionText">Nội dung câu hỏi (không bắt buộc nếu có ảnh)</label>
+<textarea id="questionText" placeholder="Nhập câu hỏi / dán ảnh của bạn vào đây!"></textarea>
+<label class="file-button question-media-dropzone" style="margin-bottom:14px">Tệp đính kèm câu hỏi: ảnh / video / âm thanh (không bắt buộc)
+              <input accept="image/*,video/*,audio/*" id="questionMediaFile" multiple="" type="file"/>
+</label>
+<p class="field-help paste-help">Mẹo: đặt con trỏ trong ô câu hỏi rồi nhấn <kbd>Ctrl</kbd> + <kbd>V</kbd> để dán nhiều ảnh cùng lúc. Có thể tải lên hoặc kéo thả nhiều ảnh, video và âm thanh. Video/âm thanh chỉ dùng ở câu hỏi.</p>
+<div style="display:flex;align-items:center;gap:10px;margin-bottom:18px">
+<img alt="Tệp đính kèm câu hỏi" class="media-preview" hidden="" id="questionMediaPreview" style="margin:0;max-height:90px;width:auto"/>
+<button class="text-button delete" hidden="" id="clearQuestionMediaBtn" type="button">Xóa ảnh</button><div class="media-list-editor" id="questionMediaListPreview"></div>
+</div>
+<label for="questionType">Loại câu hỏi</label>
+<select class="question-type-select" id="questionType">
+<option value="multiple">Trắc nghiệm</option>
+<option value="truefalse">Đúng / Sai</option>
+<option value="short">Trả lời ngắn</option>
+<option value="essay">Tự luận</option>
+</select>
+<label for="questionLevel">Mức độ câu hỏi (không bắt buộc)</label>
+<select id="questionLevel">
+<option value="">Không chọn</option>
+<option value="nb">Nhận biết</option>
+<option value="th">Thông hiểu</option>
+<option value="vd">Vận dụng</option>
+<option value="custom">Tùy chọn…</option>
+</select>
+<input class="level-custom-input" hidden="" id="questionLevelCustom" placeholder="Nhập mức độ tùy chọn"/>
+<!-- Multiple choice options -->
+<div id="choiceEditor">
+<div class="options-heading"><span>Các lựa chọn</span><span>Nhập chữ, tải ảnh hoặc đặt con trỏ vào đáp án rồi Ctrl+V để dán ảnh</span></div>
+<div class="option-fields" id="optionFields"></div>
+</div>
+<!-- True/False 4 statements editor -->
+<div hidden="" id="tfEditor">
+<div class="options-heading"><span>4 phát biểu (a – d)</span><span>Mỗi phát biểu chọn Đúng hoặc Sai là đáp án</span></div>
+<div class="tf-fields" id="tfFields"></div>
+</div>
+<!-- Correct answer -->
+<div id="correctChoiceEditor">
+<label for="correctAnswer" id="correctAnswerLabel">Đáp án đúng</label>
+<select class="question-type-select" id="correctAnswer"></select>
+<p class="field-help" hidden="" id="answerHelp"></p>
+</div>
+<!-- Short / essay answer -->
+<div hidden="" id="answerEditor">
+<label for="textAnswer" id="textAnswerLabel">Đáp án mong đợi</label>
+<input class="text-answer-input" id="textAnswer" placeholder="Nhập đáp án để đối chiếu"/>
+<p class="field-help" id="answerHelpText">Câu trả lời gần giống về nội dung sẽ được đối chiếu sau khi chuẩn hóa.</p>
+</div>
+<div class="explanation-editor">
+<label for="explanation">Giải thích (không bắt buộc)</label>
+<textarea id="explanation" placeholder="Giải thích chung cho câu hỏi này"></textarea>
+<label class="image-picker">Thêm nhiều ảnh cho phần giải thích<input accept="image/*" id="explanationMediaFiles" multiple="" type="file"/></label><div class="media-list-editor" id="explanationMediaPreview"></div>
+</div>
+<div class="form-actions">
+<button class="button button-ghost" hidden="" id="cancelEditBtn" type="button">Hủy chỉnh sửa</button>
+<button class="button button-primary button-wide" type="submit">Lưu câu hỏi</button>
+</div>
+</form>
+</div><!-- /manualQuestionEditor -->
+</div>
+<div class="panel analytics-panel" id="questionAnalyticsPanel">
+<div class="panel-heading"><h2>Phân tích câu hỏi</h2></div>
+<div id="analyticsMainContent">
+<div class="analytics-empty" id="analyticsEmpty">Chưa có dữ liệu mức độ để phân tích.</div>
+<div hidden="" id="analyticsContent">
+<div class="analytics-grid">
+<div class="chart-card">
+<h3>Tỉ lệ câu hỏi theo mức độ</h3>
+<div aria-label="Biểu đồ tỉ lệ mức độ" class="level-pie" id="levelPie" role="img"></div>
+<div class="chart-legend" id="levelLegend"></div>
+</div>
+<div class="chart-card">
+<h3>Số câu theo mức độ</h3>
+<div class="level-bars" id="levelBars"></div>
+</div>
+</div>
+</div>
+<div class="analytics-detail" id="analyticsDetail" hidden>
+<div class="chart-card"><h3>Phân bố toàn bộ câu hỏi</h3><div class="analytics-detail-grid"><div><strong id="analyticsTotalQuestions">0</strong><span>Tổng số câu</span></div><div><strong id="analyticsWithLevel">0</strong><span>Có phân mức độ</span></div><div><strong id="analyticsWithoutLevel">0</strong><span>Chưa phân mức độ</span></div></div></div>
+<div class="analytics-grid">
+<div class="chart-card"><h3>Chi tiết theo mức độ</h3><div class="level-bars" id="analyticsDetailLevels"></div></div>
+<div class="chart-card"><h3>Chi tiết theo kiểu câu hỏi</h3><div class="level-bars" id="analyticsDetailTypes"></div></div>
+</div>
+</div>
+</div>
+</div>
+<div class="sheet-analytics-controls sheet-analytics-controls-panel panel"><div class="panel-heading">
+<h2 style="font-family: 'Be Vietnam Pro', system-ui, -apple-system, Arial, sans-serif !important;text-align: center;font-weight: 500;">Thiết lập thống kê</h2>
+<span class="count-pill" id="teacherCodeLabel">Mã GV</span>
+</div><p class="field-help">Kết quả được lọc theo đúng mã giáo viên và mã đề. Chọn mã lớp để xem thống kê của riêng lớp đó.</p><p class="field-help" id="sheetConnectionStatus">Google Sheets được kết nối tự động. Giáo viên cần đăng nhập tài khoản giáo viên để xem thống kê.</p><div class="teacher-exam-browser">
+<div class="teacher-exam-tools">
+<label for="teacherExamClassFilter">Lọc theo lớp
+                  <select id="teacherExamClassFilter"><option value="">Tất cả lớp</option></select>
+</label>
+<label for="teacherExamSort">Sắp xếp danh sách đề
+                  <select id="teacherExamSort">
+<option value="date">Ngày tạo: mới nhất</option>
+<option value="class">Theo lớp</option>
+<option value="name">Theo tên đề A–Z</option>
+</select>
+</label>
+</div>
+<p class="field-help" id="teacherExamCatalogCount">Danh sách đề sẽ tự lọc theo tài khoản giáo viên đang đăng nhập.</p>
+</div><div class="sheet-multi-grid">
+<div class="multi-field">
+<div class="multi-field-title" id="teacherExamMultiLabel">Chọn đề (tất cả đề do tài khoản này tạo · có thể chọn nhiều)</div>
+<div aria-labelledby="teacherExamMultiLabel" class="multi-check-list" id="teacherExamMulti" role="group"></div>
+</div>
+<div class="multi-field">
+<div class="multi-field-title" id="teacherClassMultiLabel">Chọn lớp đã làm các đề đã chọn</div>
+<div aria-labelledby="teacherClassMultiLabel" class="multi-check-list" id="teacherClassMulti" role="group"></div>
+</div>
+</div><div class="sheet-config-grid">
+<label for="teacherCompareBy">So sánh theo
+                <select id="teacherCompareBy"><option value="class">So sánh các lớp</option><option value="exam">So sánh các đề</option></select>
+</label>
+<div class="field-help" style="margin:0">Danh sách đề và lớp chỉ lấy dữ liệu thuộc tài khoản giáo viên đang đăng nhập; không thể xem dữ liệu của giáo viên khác.</div>
+</div><div class="sheet-config-grid">
+<label for="teacherSortSelect">Sắp xếp kết quả
+                <select id="teacherSortSelect">
+<option value="latest">Ngày nộp gần nhất</option>
+<option value="count">Số học sinh nhiều nhất</option>
+<option value="avgHigh">Điểm trung bình cao đến thấp</option>
+<option value="scoreHigh">Điểm cao đến thấp</option>
+<option value="scoreLow">Điểm thấp đến cao</option>
+</select>
+</label>
+<label for="teacherChartSelect">Kiểu biểu đồ
+                <select id="teacherChartSelect">
+<option value="bar">Biểu đồ cột ngang</option>
+<option value="line">Biểu đồ đường</option>
+<option value="pie">Biểu đồ tròn phân loại điểm</option>
+<option value="table">Chỉ xem bảng so sánh</option><option selected="" value="ranking">Xếp hạng học sinh</option>
+</select>
+</label>
+</div><p class="field-help">Cần chọn ít nhất một đề. Không chọn lớp nghĩa là xem tất cả lớp đã làm những đề đang chọn. Danh sách lớp chỉ xuất hiện khi có lượt làm thực tế.</p><button class="button button-primary" id="loadExamStatsBtn" type="button">Tải dữ liệu thống kê</button></div></div>
+<!-- Right: question bank -->
+<div>
+<div class="panel bank-panel">
+<div class="panel-heading bank-heading">
+<div class="bank-heading-main"><h2>Bộ câu hỏi của bạn</h2>
+<div class="bank-filters" id="bankFilters">
+<select id="bankGroupMode" aria-label="Phân loại câu hỏi"><option value="none">Không phân loại</option><option value="level">Theo mức độ</option><option value="type">Theo kiểu</option></select>
+<select id="bankLevelFilter" aria-label="Lọc mức độ" hidden><option value="all">Tất cả mức độ</option></select>
+<select id="bankTypeFilter" aria-label="Lọc kiểu câu hỏi" hidden><option value="all">Tất cả kiểu</option><option value="multiple">Trắc nghiệm</option><option value="truefalse">Đúng / Sai</option><option value="short">Trả lời ngắn</option><option value="essay">Tự luận</option></select>
+<select id="bankSort" aria-label="Sắp xếp câu hỏi" hidden><option value="original">Thứ tự ban đầu</option><option value="az">Tên câu hỏi A–Z</option><option value="long">Nội dung dài đến ngắn</option><option value="short">Nội dung ngắn đến dài</option></select>
+</div></div>
+<div class="bank-heading-actions"><span class="count-pill" id="bankCount">0</span><button aria-expanded="false" class="bank-collapse-btn" id="bankCollapseBtn" type="button">Mở rộng</button></div>
+</div>
+<div class="question-list" id="questionList"></div>
+<div class="empty-state" id="emptyBank">
+<div class="empty-icon">?</div>
+<h3>Chưa có câu hỏi nào</h3>
+<p>Bắt đầu bằng cách viết câu hỏi đầu tiên ở bên trái.</p>
+<button class="button button-primary" hidden="" id="startQuizBtnEmpty" type="button">Bắt đầu làm bài</button>
+</div>
+</div>
+<div class="panel sheet-results-panel"><div class="sheet-analytics-results"><div class="panel-heading sheet-results-heading"><h2>Thống kê điểm học sinh</h2></div><select disabled="" hidden="" id="classStatsSelect"><option value="">Không sử dụng</option></select><div class="sheet-stat-grid" hidden="" id="classStatsSummary">
+<div class="sheet-stat"><strong id="classAverage">0.00</strong><span>Điểm trung bình / 10</span></div>
+<div class="sheet-stat"><strong id="classStudentCount">0</strong><span>Lượt HS-đề được tính</span></div>
+<div class="sheet-stat"><strong id="classWeakPct">0%</strong><span>Yếu</span></div>
+<div class="sheet-stat"><strong id="classAveragePct">0%</strong><span>Trung bình</span></div>
+<div class="sheet-stat"><strong id="classGoodPct">0%</strong><span>Khá</span></div>
+<div class="sheet-stat"><strong id="classVeryGoodPct">0%</strong><span>Giỏi</span></div>
+<div class="sheet-stat"><strong id="classExcellentPct">0%</strong><span>Xuất sắc</span></div>
+</div><div class="sheet-compare-card" hidden="" id="teacherCompareWrap">
+<h3 id="teacherCompareTitle">So sánh kết quả</h3>
+<div class="teacher-compare-chart" id="teacherCompareChart"></div>
+</div><div class="sheet-table-wrap" hidden="" id="teacherExamBreakdownWrap">
+<h3 style="padding:12px 12px 0">Báo cáo riêng từng đề đã chọn</h3>
+<table class="sheet-results-table"><thead><tr><th>Tên dự án</th><th>Số học sinh</th><th>Điểm TB</th><th>Cao nhất</th><th>Thấp nhất</th></tr></thead><tbody id="teacherExamBreakdownBody"></tbody></table>
+</div><div class="sheet-grade-bars" hidden="" id="classGradeBars"></div><div class="sheet-table-wrap" hidden="" id="classResultsWrap">
+<table class="sheet-results-table">
+<thead><tr><th>Học sinh</th><th>Lớp</th><th>Tên đề</th><th>Điểm lần thi cuối</th><th>Điểm trung bình các lần thi</th><th>Số lần thi</th><th>Thời gian lần cuối</th><th>Ngày nộp cuối</th></tr></thead>
+<tbody id="classResultsBody"></tbody>
+</table>
+</div><p class="field-help" id="classStatsStatus">Đăng nhập bằng tài khoản giáo viên, sau đó tải danh sách đề và thống kê.</p></div></div></div>
+</div>
+</section>
+<!-- ============ Quiz view ============ -->
+<section hidden="" id="quizView">
+<div class="quiz-wrap">
+<div class="quiz-topline">
+<div class="left">
+<span class="count-pill" id="quizProgress">1 / 1</span>
+<span class="timer-pill" id="quizTimer">∞</span>
+</div>
+<div class="right">
+<span class="streak-pill" id="quizStreak">Chuỗi đúng: 0</span>
+<span class="count-pill" id="quizScore">Điểm: 0</span>
+<label class="explanation-toggle"><input checked="" id="showExplanationsToggle" type="checkbox"/> Hiện giải thích</label>
+</div>
+</div>
+<div class="restore-bar" hidden="" id="restoreBar">
+<span>Phát hiện bài làm chưa nộp đã được lưu tự động.</span>
+<span>
+<button class="ghost" id="discardProgressBtn" type="button">Bỏ qua</button>
+<button id="restoreProgressBtn" type="button">Khôi phục</button>
+</span>
+</div>
+<div class="quiz-card" hidden="" id="quizCard"></div>
+<div class="empty-state" id="quizEmpty" style="margin-top:18px">
+<div class="empty-icon">?</div>
+<h3>Chưa có câu hỏi để làm</h3>
+<p>Hãy thêm ít nhất một câu hỏi trước nhé.</p>
+<button class="button button-primary" id="goEditorBtn" type="button">Thêm câu hỏi</button>
+</div>
+<div class="result-card panel" hidden="" id="resultCard">
+<div class="result-orbit">✓</div>
+<p class="section-kicker">Hoàn thành</p>
+<div aria-label="Điểm số" class="result-score-ring" id="resultScoreRing">
+<svg aria-hidden="true" class="result-score-svg" viewbox="0 0 220 220">
+<defs><lineargradient id="teacherScoreGradient" x1="100%" x2="0%" y1="50%" y2="50%"><stop offset="0%" stop-color="#ef4444"></stop><stop offset="50%" stop-color="#facc15"></stop><stop offset="100%" stop-color="#22c55e"></stop></lineargradient></defs>
+<circle class="result-score-track" cx="110" cy="110" r="94"></circle>
+<circle class="result-score-arc" cx="110" cy="110" id="resultScoreArc" r="94"></circle>
+</svg>
+<span class="result-score-value" id="resultScoreValue">0.00</span>
+</div>
+<h2 id="resultTitle">Kết quả của bạn</h2>
+<p class="result-score-caption" id="resultScoreCaption">/ 10 điểm</p>
+<p id="resultCopy"></p>
+<div class="result-note" hidden="" id="resultNote"></div>
+<div class="result-stats" id="resultStats"></div>
+<div class="essay-review" hidden="" id="essayReview">
+<h3>Chấm phần tự luận</h3>
+<p>Nhập điểm cho từng câu tự luận nếu muốn cộng vào kết quả.</p>
+<div id="essayReviewList"></div>
+</div>
+<div class="result-charts" hidden="" id="resultCharts">
+<div class="chart-card">
+<h3>Điểm theo mức độ</h3>
+<div aria-label="Biểu đồ điểm theo mức độ" class="level-pie" id="resultPie" role="img"></div>
+<div class="chart-legend" id="resultLegend"></div>
+</div>
+<div class="chart-card">
+<h3>Số câu đúng theo mức độ</h3>
+<div class="level-bars" id="resultBars"></div>
+</div>
+</div>
+<div class="wrong-review" hidden="" id="wrongReview">
+<h3>Xem lại các câu chưa đúng</h3>
+<div id="wrongReviewList"></div>
+</div>
+<div class="form-actions" style="justify-content:center">
+<button class="button button-ghost" id="goEditorBtn2" type="button">Về bộ soạn</button>
+<button class="button button-primary" id="retryBtn" type="button">Làm lại</button>
+</div>
+</div>
+<div class="quiz-bottom-nav" hidden="" id="quizBottomNav">
+<button class="button button-ghost" id="quizPrevBtn" type="button">← Trước</button>
+<select aria-label="Nhảy đến câu" id="quizJump"></select>
+<button class="button button-primary" id="quizNextBtn" type="button">Sau →</button>
+</div>
+</div>
+</section>
+</main>
+<footer>Mẹo: câu hỏi rõ ràng và chỉ một đáp án đúng sẽ giúp bài quiz dễ làm hơn. Tiến độ làm bài được tự động lưu trên thiết bị.</footer>
+</div>
+<!-- ============ Settings modal ============ -->
+<div class="modal" hidden="" id="settingsModal">
+<div class="modal-backdrop" data-close-settings=""></div>
+<div class="settings-card">
+<button aria-label="Đóng" class="modal-close" id="closeSettingsBtn" type="button">×</button>
+<h2>Tùy chỉnh giao diện</h2>
+<p class="auth-intro">Chỉ các lựa chọn giao diện của giáo viên nằm ở đây. Thời gian, điểm số và cách xuất đề nằm trong nút “Xuất bài tập”.</p>
+<label for="themeSelect">Màu nền</label>
+<select id="themeSelect">
+<option value="dark">Tối (mặc định)</option>
+<option value="mint">Bạc hà</option>
+<option value="sunset">Hoàng hôn</option>
+<option value="ocean">Đại dương</option>
+<option value="lavender">Tím dịu</option>
+<option value="mono">Đen trắng</option>
+</select>
+<div class="settings-divider"></div>
+<button class="button button-ghost" id="settingsSoundBtn" style="width:100%;margin-top:6px" type="button">Âm thanh: Bật</button>
+<button class="button button-primary button-wide" id="saveSettingsBtn" type="button">Lưu cài đặt</button>
+<div class="settings-divider"></div>
+<button class="button button-ghost" id="logoutSettingsBtn" style="width:100%" type="button">Thoát tài khoản</button>
+</div>
+</div>
+<!-- ============ Export modal ============ -->
+<div class="modal" hidden="" id="exportModal">
+<div class="modal-backdrop" data-close-export=""></div>
+<div class="settings-card">
+<button aria-label="Đóng" class="modal-close" id="closeExportBtn" type="button">×</button>
+<h2 style="font-family: 'Be Vietnam Pro', system-ui, -apple-system, Arial, sans-serif !important;">Xuất bài tập</h2>
+<p class="auth-intro">Tạo một file HTML độc lập. Học sinh nhập họ tên và lớp, làm bài ngay trong file; tiến độ được lưu trên thiết bị đang mở file.</p>
+<label for="exportTitleInput">Tên bài tập</label>
+<input id="exportTitleInput" type="text"/>
+<label for="teacherDisplayNameInput" style="margin-top:12px">Tên giáo viên (không bắt buộc)</label>
+<input autocomplete="name" id="teacherDisplayNameInput" maxlength="100" placeholder="Tên hiển thị trên bài thi" type="text"/>
+<label for="exportClassInput" style="margin-top:12px">Lớp (không bắt buộc)</label>
+<input autocomplete="off" id="exportClassInput" maxlength="30" placeholder="Điền lớp để thống kê riêng cho lớp này" type="text"/>
+<p class="field-help">Tên giáo viên sẽ hiển thị trước thông tin lớp. Không gán mã lớp sẽ tính điểm chung cho tất cả học sinh.</p>
+<label for="examPasswordInput" style="margin-top:12px">Mật khẩu khi tải tệp (không bắt buộc)</label>
+<div class="password-control"><input autocomplete="new-password" id="examPasswordInput" maxlength="128" placeholder="Học sinh cần nhập mật khẩu để bắt đầu" type="password"/><button aria-label="Hiện mật khẩu" class="password-eye-button" id="toggleTeacherExamPasswordBtn" title="Hiện mật khẩu" type="button">👁</button></div>
+<p class="field-help">Chỉ áp dụng cho tệp HTML tải về. Để trống nếu không cần mật khẩu.</p>
+<div class="settings-grid" style="margin-top:14px">
+<label for="examAccessModeInput">Quyền truy cập
+        <select id="examAccessModeInput"><option value="PUBLIC">Công khai</option><option value="PRIVATE">Riêng tư</option></select>
+</label>
+<label for="examLockModeInput">Khóa bài làm
+        <select id="examLockModeInput"><option value="UNLOCKED">Không khóa</option><option value="LOCKED">Khóa theo thời gian</option><option value="LOCKED_NOW">Khóa ngay lập tức</option></select>
+</label>
+</div>
+<div hidden="" id="examLockScheduleField">
+<label for="examLockUntilInput" style="margin-top:12px">Thời điểm tự động khóa
+        <input disabled="" id="examLockUntilInput" type="datetime-local"/>
+</label>
+<p class="field-help">Bài vẫn mở trước thời điểm này. Khi đến thời điểm đã chọn, hệ thống sẽ tự khóa bài làm.</p>
+</div>
+<button class="button button-ghost button-wide" hidden="" id="updateExamAccessBtn" type="button">Cập nhật</button>
+<div class="settings-grid" style="margin-top:14px">
+<div><label for="durationInput">Thời gian làm bài (phút)</label><input id="durationInput" max="600" min="0" type="number"/>
+<div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
+<button class="button button-ghost" data-duration="15" style="min-height:32px;padding:0 10px;font-size:11px" type="button">15 phút</button>
+<button class="button button-ghost" data-duration="45" style="min-height:32px;padding:0 10px;font-size:11px" type="button">45 phút</button>
+<button class="button button-ghost" data-duration="90" style="min-height:32px;padding:0 10px;font-size:11px" type="button">90 phút</button>
+<button class="button button-ghost" data-duration="0" style="min-height:32px;padding:0 10px;font-size:11px" type="button">Không giới hạn</button>
+</div></div>
+<div><label for="maxScoreInput">Thang điểm</label><input id="maxScoreInput" max="100" min="1" type="number"/></div>
+</div>
+<p class="field-help" style="margin-top:10px">Để 0 nếu không giới hạn thời gian. Có thể chỉnh sửa điểm tối đa.</p>
+<div class="settings-subtitle">Gán điểm cho từng loại câu hỏi</div>
+<div class="points-grid">
+<label>Trắc nghiệm<input id="pointMultiple" min="0" step="0.05" type="number"/></label>
+<label>Đúng / Sai<input id="pointTruefalse" min="0" step="0.05" type="number"/></label>
+<label>Trả lời ngắn<input id="pointShort" min="0" step="0.05" type="number"/></label>
+<label>Tự luận<input id="pointEssay" min="0" step="0.05" type="number"/></label>
+</div>
+<div class="settings-subtitle">Tùy chọn cho học sinh</div>
+<label for="answerRevealMode" style="margin-top:12px">Thời điểm hiện đáp án</label>
+<select id="answerRevealMode">
+<option value="submit">Làm xong thì mới biết đáp án</option>
+<option value="per-question">Làm đến câu nào, hiện đáp án câu đó</option>
+<option value="none">Không hiện đáp án</option>
+</select>
+<label class="export-check-row"><input checked="" id="allowRetakeInput" style="cursor:pointer" type="checkbox"/> Cho phép học sinh làm lại bài</label>
+<label class="export-check-row"><input id="shuffleExamInput" style="cursor:pointer" type="checkbox"/> Đảo đề (đảo thứ tự câu hỏi và đáp án)</label>
+<label class="export-check-row" style="cursor:pointer"><input id="antiCheatInput" style="cursor:pointer" type="checkbox"/> Bật chống gian lận khi rời bài hoặc chuyển sang ứng dụng khác</label>
+<p class="field-help">Khi bật sẽ có 3 lần nhắc nhở, đến lần thứ 4 học sinh sẽ phải đăng nhập và thi lại</p>
+<label class="export-check-row" style="cursor:pointer"><input id="antiCopyInput" style="cursor:pointer" type="checkbox"/> Hạn chế sao chép nội dung câu hỏi</label>
+<label class="export-check-row" style="cursor:pointer"><input id="antiScreenshotInput" style="cursor:pointer" type="checkbox"/> Ẩn nội dung khi chuyển ứng dụng</label>
+<p class="field-help">Ngăn chặn chụp màn hình và có thể không hoạt động do đang trong quá trình phát triển</p>
+<label class="export-check-row" style="cursor:pointer"><input id="requireStudentEmailInput" style="cursor:pointer" type="checkbox"/> Bắt buộc học sinh đăng nhập bằng Gmail và mật khẩu (không khuyến khích)</label>
+<p class="field-help">Bật: cần đăng nhập, kết quả được lưu lâu dài và có thể thống kê theo tài khoản.</p><p class="field-help"> Tắt: học sinh có thể vào bằng họ tên/lớp, email không bắt buộc; dữ liệu khách tự xóa sau 7 ngày không hoạt động. Học sinh vẫn có thể đăng nhập để lưu lâu dài.</p>
+<div class="multi-export-options" style="margin:16px 0 12px;padding:14px;border:1px solid var(--line);border-radius:14px;background:var(--paper)">
+<label class="export-check-row" style="margin-top:0;cursor:pointer"><input id="multiExportModeInput" style="cursor:pointer" type="checkbox"/> Chọn nhiều đề để xuất chung một file HTML hoặc JSON</label>
+<div hidden id="multiExportPanel" style="margin-top:12px">
+<label class="export-check-row" style="margin-top:0;cursor:pointer"><input id="multiExportSelectAll" style="cursor:pointer" type="checkbox"/> Chọn tất cả đề</label>
+<div aria-label="Chọn các đề cần xuất" class="multi-check-list" id="multiExportList" role="group" style="max-height:260px;margin-top:9px"></div>
+<p class="field-help" id="multiExportCount" style="margin:9px 0 0">Chọn ít nhất 1 đề để xuất.</p>
+</div>
+</div>
+<button class="button button-primary button-wide" id="saveSettingsBtnExport" type="button">Tải file học sinh</button>
+<button class="button button-ghost button-wide" id="exportProjectJsonBtn" style="margin-top:9px" type="button">Xuất JSON để chuyển dự án</button>
+<p class="field-help">Khi bật chọn nhiều đề, nút này sẽ xuất tất cả đề đang chọn vào một JSON (mảng projects). Khi tắt, chỉ xuất dự án hiện tại. JSON giữ câu hỏi, đáp án và media để nhập sang Quiz Craft khác.</p>
+</div>
+</div>
+<!-- ============ Auth modal ============ -->
+<div class="modal" hidden="" id="authModal">
+<div class="modal-backdrop" data-close-auth=""></div>
+<div class="auth-card">
+<button aria-label="Đóng" class="modal-close" id="closeAuthBtn" type="button">×</button>
+<div class="auth-panel">
+<h2 id="authTitle">Đăng nhập bằng Gmail</h2>
+<p class="auth-intro" id="authIntro">Đăng nhập để đồng bộ dữ liệu Quiz Craft.</p>
+<form autocomplete="on" id="authForm" novalidate="">
+<div hidden="" id="nameField">
+<label for="authName">Tên của bạn</label>
+<input autocomplete="name" id="authName" maxlength="100" placeholder="Họ và tên" type="text"/>
+</div>
+<label for="authEmail">Gmail</label>
+<input autocomplete="username" id="authEmail" name="username" placeholder="example@gmail.com" required="" type="email"/>
+<label for="authPassword" id="authPasswordLabel">Mật khẩu</label>
+<input autocomplete="current-password" id="authPassword" maxlength="128" minlength="8" name="password" placeholder="Tối thiểu 8 ký tự" required="" type="password"/>
+<div hidden="" id="otpField">
+<label for="authOtp">Mã OTP (6 chữ số)</label>
+<input autocomplete="one-time-code" id="authOtp" inputmode="numeric" maxlength="6" placeholder="Nhập mã gửi tới email"/>
+</div>
+<button class="button" hidden="" id="sendOtpBtn" type="button">Gửi mã OTP</button>
+<p class="auth-error" hidden="" id="authError"></p>
+<button class="button button-primary" id="authSubmit" type="submit">Đăng nhập</button>
+</form>
+<div class="google-auth-wrap"><div id="googleAuthMount"></div><p class="field-help" id="googleAuthNote">Đăng nhập Google sẽ khả dụng sau khi cấu hình OAuth Client ID.</p></div>
+<div class="auth-links">
+<button class="switch-button" id="forgotPasswordBtn" type="button">Quên mật khẩu?</button>
+<button class="switch-button" id="authSwitch" type="button">Chưa có tài khoản? Đăng ký</button>
+</div>
+</div>
+</div>
+</div>
+<div class="toast" hidden="" id="toast"></div>
+<script src="./js/app.js"></script>
+<script src="./js/teacher.js"></script>
+<script src="./js/student.js"></script>
+<footer class="qc-footer">
+<div class="qc-footer-brand"><strong>QUIZ CRAFT</strong><span>Nền tảng tạo và làm bài tập trực tuyến</span></div>
+<nav aria-label="Liên kết cuối trang">
+<a href="terms.html" target="_blank" rel="noopener noreferrer">Điều khoản sử dụng</a>
+<a href="guide.html" target="_blank" rel="noopener noreferrer">Hướng dẫn sử dụng</a>
+<a href="about.html" target="_blank" rel="noopener noreferrer">Giới thiệu</a>
+<a href="support.html" target="_blank" rel="noopener noreferrer">Ủng hộ nhà phát triển</a>
+<a href="https://www.facebook.com/hovsu2009" rel="noopener noreferrer" target="_blank">Facebook</a>
+<a href="https://x.com/hovsu2009" rel="noopener noreferrer" target="_blank">Twitter</a>
+<a href="https://www.tiktok.com/@hovsu2009" rel="noopener noreferrer" target="_blank">TikTok</a>
+<a href="https://www.youtube.com/@hovsu2009" rel="noopener noreferrer" target="_blank">Youtube</a>
+</nav>
+<small>© 2026 Quiz Craft</small>
+</footer>
+<!-- CSS moved to css/styles.css (style block 7) -->
+</body>
+</html>
