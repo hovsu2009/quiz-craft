@@ -1866,7 +1866,7 @@ const LANG={
   brand:{tagline:'Tạo câu hỏi dễ dàng'},
   hero:{saved:'Đã lưu thay đổi.'},
   stats:{questions:'câu hỏi'},
-  actions:{start:'Bắt đầu làm bài',cancel:'Hủy chỉnh sửa',saveQuestion:'Lưu câu hỏi',edit:'Sửa',delete:'Xóa',
+  actions:{start:'Bắt đầu làm bài',cancel:'Thoát chỉnh sửa',saveQuestion:'Lưu câu hỏi',edit:'Sửa',delete:'Xóa',
     addQuestion:'Thêm câu hỏi',retry:'Làm lại',next:'Sau',finish:'Xem kết quả',submit:'Nộp bài',
     settings:'Cài đặt',export:'Xuất bài tập',soundOn:'Âm thanh: Bật',soundOff:'Âm thanh: Tắt'},
   status:{saved:'Đã lưu',saveFailed:'Chưa lưu được'},
@@ -2102,8 +2102,8 @@ function projectSnapshot(){return {id:activeProjectId,name:projectName,questions
 function hydrateProject(p){activeProjectId=p.id;projectName=p.name||'Bộ câu hỏi';questions=Array.isArray(p.questions)?p.questions.map(normalize).filter(valid):[];meta={...meta,...(p.meta||{})};const savedSettings=p.settings||{};settings={...settings,...savedSettings,lockMode:savedSettings.lockMode|| (savedSettings.lockAt||savedSettings.lockedUntil?'LOCKED':'UNLOCKED'),lockAt:savedSettings.lockAt||savedSettings.lockedUntil||'',points:{...settings.points,...(savedSettings.points||{})}};}
 function renderProjects(){if(!el.projectSelect)return;el.projectSelect.replaceChildren();projects.forEach(p=>{const o=document.createElement('option');o.value=p.id;o.textContent=p.name;el.projectSelect.append(o);});el.projectSelect.value=activeProjectId;}
 
-/* ---- Draft (editor auto-save) ---- */
-let draftTimer=0;
+/* ---- Draft + automatic question saving ---- */
+let draftTimer=0,editorDirty=false;
 function draftSnapshot(){
   return{projectId:activeProjectId,editingId,prompt:el.questionText.value,type:el.questionType.value,
     level:el.questionLevel.value,custom:el.questionLevelCustom.value,answer:el.textAnswer.value,
@@ -2112,7 +2112,68 @@ function draftSnapshot(){
 }
 async function persistDraft(){try{await store.setItem(DKEY,JSON.stringify(draftSnapshot()));await store.setItem(QKEY,JSON.stringify(questions));}catch(e){}}
 async function clearDraft(){try{await store.removeItem(DKEY);}catch(e){}}
-function scheduleDraftSave(){clearTimeout(draftTimer);draftTimer=setTimeout(()=>persistDraft(),250);}
+async function clearDraftFor(id){
+  try{
+    const raw=await store.getItem(DKEY);if(!raw)return;
+    const draft=JSON.parse(raw);
+    if(draft.projectId===activeProjectId&&String(draft.editingId||'')===String(id||''))await store.removeItem(DKEY);
+  }catch(e){}
+}
+function buildEditorQuestion(id){
+  const prompt=el.questionText.value.trim(),type=el.questionType.value,
+        level=el.questionLevel.value==='custom'?el.questionLevelCustom.value.trim():el.questionLevel.value;
+  const mediaItems=questionMediaList(),primary=mediaItems[0]||{type:'none',url:''};
+  const existing=questions.find(item=>item.id===id)||{};
+  const data={...existing,id,type,level,prompt,
+    media:{type:primary.type||'none',url:primary.url||''},mediaItems,
+    explanation:el.explanation.value,explanationMedia:readMediaList(el.explanationMediaFiles)};
+  if(type==='multiple'){
+    const slots=optionSlots();
+    const filled=slots.map((slot,index)=>({...slot,originalIndex:index})).filter(slot=>hasChoice(slot.text,slot.media));
+    const selected=filled.findIndex(slot=>slot.originalIndex===Number(el.correctAnswer.value));
+    Object.assign(data,{options:filled.map(slot=>slot.text),optionMedia:filled.map(slot=>slot.media),
+      explanations:filled.map(slot=>slot.explanation),answer:selected>=0?selected:0});
+  }else if(type==='truefalse'){
+    Object.assign(data,{statements:tfSlots(),answer:''});
+  }else{
+    Object.assign(data,{answer:el.textAnswer.value.trim()});
+  }
+  return normalize(data);
+}
+function autosaveEditorQuestion(){
+  if(!editorDirty)return true;
+  const previousId=editingId;
+  const id=previousId||('q-'+Date.now()+'-'+Math.random().toString(36).slice(2,7));
+  let question;
+  try{question=buildEditorQuestion(id);}catch(error){editorDirty=false;persistDraft();return false;}
+  // Do not publish an unfinished new question or replace a valid saved question
+  // with an incomplete form. The editor draft is still preserved locally.
+  if(!valid(question)){editorDirty=false;persistDraft();return false;}
+  const index=questions.findIndex(item=>item.id===id);
+  if(index>=0)questions[index]=question;
+  else{
+    questions.push(question);
+    editingId=id;
+    el.formTitle.textContent=t('editor.editTitle');
+    el.cancelEditBtn.hidden=false;
+  }
+  touchRecentQuestion(id);
+  editorDirty=false;
+  syncNavigator();
+  renderBank();
+  void save();
+  void clearDraftFor(previousId);
+  return true;
+}
+function flushEditorAutosave(){
+  clearTimeout(draftTimer);draftTimer=0;
+  if(editorDirty)autosaveEditorQuestion();
+}
+function scheduleDraftSave(){
+  editorDirty=true;
+  clearTimeout(draftTimer);
+  draftTimer=setTimeout(()=>{draftTimer=0;autosaveEditorQuestion();},400);
+}
 async function restoreDraft(){
   try{const raw=await store.getItem(DKEY);if(!raw)return;const draft=JSON.parse(raw);
     if(draft.projectId!==activeProjectId)return;
@@ -2146,8 +2207,9 @@ async function load(){
   }catch(e){activeProjectId=createProjectId();projectName='Bộ câu hỏi mẫu';questions=seed.map(normalize);projects=[projectSnapshot()];renderProjects();toast(t('errors.loadFailed'));}
 }
 async function createProject(){
+  flushEditorAutosave();
   const name=await prompt(t('project.prompt'),t('project.defaultName'));if(!name?.trim())return;
-  await save();activeProjectId=createProjectId();projectName=name.trim();questions=[];editingId=null;
+  await save();activeProjectId=createProjectId();projectName=name.trim();questions=[];editingId=null;editorDirty=false;
   meta={title:projectName,description:'Tạo câu hỏi và tổ chức bài quiz của bạn.'};
   applyMeta();
   settings={duration:0,maxScore:10,studentView:'single',answerReveal:'submit',allowRetake:true,shuffle:false,lockMode:'UNLOCKED',lockAt:'',classCode:'',assignmentId:'',projectKey:'',accessMode:'PUBLIC',antiCheat:false,antiCopy:false,antiScreenshot:false,requireStudentEmail:false,points:{multiple:.25,truefalse:.5,short:1,essay:2}};
@@ -2287,7 +2349,9 @@ async function deleteCurrentProject(){
 }
 
 async function switchProject(id){
-  if(!id||id===activeProjectId)return;await save();
+  if(!id||id===activeProjectId)return;
+  flushEditorAutosave();
+  await save();
   const p=projects.find(x=>x.id===id);if(!p)return;hydrateProject(p);renderProjects();renderBank();resetForm();
   applyMeta();loadTeacherIntegrationState();await savePrefs();await clearProgress();toast(t('project.opened',{name:p.name}));
 }
@@ -3009,7 +3073,9 @@ function updateType(){
 }
 function updateLevel(){const custom=el.questionLevel.value==='custom';el.questionLevelCustom.hidden=!custom;el.questionLevelCustom.required=custom;if(!custom)el.questionLevelCustom.value='';}
 function resetForm(){
+  flushEditorAutosave();
   editingId=null;editorIndex=-1;el.questionForm.reset();
+  editorDirty=false;
   el.formTitle.textContent=t('editor.title');el.cancelEditBtn.hidden=true;
   el.questionType.value='multiple';el.questionLevel.value='';el.questionLevelCustom.value='';
   writeMediaList(el.explanationMediaFiles,[]);el.explanationMediaFiles.value='';el.explanationMediaPreview.replaceChildren();
@@ -3022,7 +3088,11 @@ function touchRecentQuestion(id){
   recentQuestionIds=[id,...recentQuestionIds.filter(x=>x!==id)].slice(0,5);
 }
 function fill(q){
-  if(!q)return;touchRecentQuestion(q.id);
+  if(!q)return;
+  const targetId=q.id;
+  flushEditorAutosave();
+  q=questions.find(item=>item.id===targetId)||q;
+  touchRecentQuestion(q.id);
   const bank=document.querySelector('.bank-panel'),collapseButton=document.getElementById('bankCollapseBtn');
   if(bank&&bank.classList.contains('is-collapsed')){
     bank.classList.remove('is-collapsed');
@@ -3262,6 +3332,7 @@ function renderBank(){
 /* ==================== Quiz taking view ==================== */
 function view(name){
   const isQuiz=name==='quiz';
+  if(isQuiz)flushEditorAutosave();
   el.editorView.hidden=isQuiz;el.quizView.hidden=!isQuiz;
   document.querySelectorAll('.tab').forEach(tab=>tab.classList.toggle('is-active',tab.dataset.view===name));
   if(isQuiz)startQuiz();else{if(!submitted)saveProgress();stopTimer();}
@@ -3944,6 +4015,7 @@ async function awaitExport(title,delivery,exportOptions={}){
 /* ==================== Submit question (editor) ==================== */
 async function submitQuestion(event){
   event.preventDefault();
+  clearTimeout(draftTimer);draftTimer=0;
   const prompt=el.questionText.value.trim(),type=el.questionType.value,
         level=el.questionLevel.value==='custom'?el.questionLevelCustom.value.trim():el.questionLevel.value;
   if(!prompt&&!questionMediaList().length)return toast(t('errors.completeForm'));
@@ -3974,6 +4046,7 @@ async function submitQuestion(event){
   if(editingId){const idx=questions.findIndex(x=>x.id===editingId);if(idx>=0)questions[idx]=q;toast(t('messages.updated'));}
   else{questions.push(q);toast(t('messages.added'));}
   touchRecentQuestion(q.id);
+  editorDirty=false;
   await save();await store.removeItem(DKEY).catch(()=>{});renderBank();resetForm();
 }
 
