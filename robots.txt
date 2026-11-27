@@ -1,3 +1,4 @@
 User-agent: *
 Allow: /
+
 Sitemap: https://hovsu2009.github.io/quiz-craft/sitemap.xml
