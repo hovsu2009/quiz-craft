@@ -1,23 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://sitemaps.org">
   <url>
-    <loc>https://github.io</loc>
+    <loc>https://hovsu2009.github.io/quiz-craft/</loc>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://github.ioguide.html</loc>
+    <loc>https://hovsu2009.github.io/quiz-craft/guide.html</loc>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://github.ioabout.html</loc>
+    <loc>https://hovsu2009.github.io/quiz-craft/about.html</loc>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://github.iosupport.html</loc>
+    <loc>https://hovsu2009.github.io/quiz-craft/support.html</loc>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://github.ioterms.html</loc>
+    <loc>https://hovsu2009.github.io/quiz-craft/terms.html</loc>
     <priority>0.5</priority>
   </url>
 </urlset>
